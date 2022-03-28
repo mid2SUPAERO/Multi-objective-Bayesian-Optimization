@@ -4,8 +4,15 @@
 # smoot
 
 ## Installation
+
+ONERA version :
 <code>
-  pip install smoot
+  pip install smoot 
+</code>
+
+This version with last updates :
+<code>
+  git clone git@github.com:RobinGRAPIN/smoot.git
 </code>
 
 Necessary packages : <code>pymoo</code>,<code>smt</code>
@@ -32,3 +39,10 @@ You will learn how to use implemented the functionnalities and options such as :
  - The method to manage the constraints
 
 For additional questions, contact: robingrapin@orange.fr
+
+### Article and presentation
+
+This repository is a first throw of code to then update SEGO to handle multi-objective problems. This led to an AIAA article accepted, accessible at this adress:
+https://www.overleaf.com/read/fndwdktdgkkk
+The presentation of the work I made for this project is available here:
+https://1drv.ms/p/s!Am_qRb-KdCm2gd8rlKU1_3CD13wKWw?e=KEgokt
