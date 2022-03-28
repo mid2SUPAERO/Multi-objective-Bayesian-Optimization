@@ -13,13 +13,14 @@ class ZDT(Problem):
     """
     ZDT toolkit
     x = {x1.. xn}
-    y = {x1.. xj} = {y1.. yj} 
+    y = {x1.. xj} = {y1.. yj}
     z = {x(j+1).. xn} = {z1.. zk}
     Testing functions with the shape :
         f1 : y -> f1(y)
         f2 : y,z -> g(z)h(f1(y),g(z))
     xbounds = [0,1]**n
     """
+
     def _initialize(self):
         self.options.declare("ndim", 2, types=int)
         self.options.declare("name", "ZDT", types=str)
@@ -30,7 +31,7 @@ class ZDT(Problem):
     def _setup(self):
         self.xlimits[:, 1] = 1.0
 
-    def _evaluate(self, x, kx = None):
+    def _evaluate(self, x, kx=None):
         """
         Arguments
         ---------
@@ -83,7 +84,7 @@ class ZDT(Problem):
                     - f1[i, 0] / g[i, 0] * np.sin(10 * np.pi * f1[i, 0])
                 )
 
-        return np.hstack((f1, g * h)) 
+        return np.hstack((f1, g * h))
 
     def pareto(self, npoints=300, random_state=None):
         """
@@ -126,5 +127,5 @@ class ZDT(Problem):
                 else:
                     X[i, 0] = pt
         else:
-            X[:,0] = rand.uniform(0, 1, npoints)
+            X[:, 0] = rand.uniform(0, 1, npoints)
         return X, self._evaluate(X)

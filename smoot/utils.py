@@ -16,7 +16,29 @@ import time
 from smt.sampling_methods import LHS
 from pymoo.factory import get_performance_indicator
 
-def write_increase_iter(fun,path,xlimits = None,reference = None, n_max=10, runs = 5 ,paraMOO = {"pop_size" : 50}, verbose = True, indic = "igd+", start_seed = 0, criterions = ["PI","EHVI","GA","WB2S"] ):
+
+def write_increase_iter(
+    fun,
+    path,
+    xlimits=None,
+    reference=None,
+    n_max=10,
+    runs=5,
+    paraMOO={},
+    verbose=True,
+    indic="igd",
+    start_seed=0,
+    criterions=["PI", "EHVI", "GA", "WB2S", "MPI"],
+    subcrits=["EHVI", "EHVI", "EHVI", "EHVI", "EHVI"],
+    transfos=[
+        lambda l: sum(l),
+        lambda l: sum(l),
+        lambda l: sum(l),
+        lambda l: sum(l),
+        lambda l: sum(l),
+    ],
+    titles=None,
+):
     """
     write a dictionnary with the results of the runs for each criterion in path.
 
@@ -24,8 +46,8 @@ def write_increase_iter(fun,path,xlimits = None,reference = None, n_max=10, runs
     ----------
     fun : function
         function to optimize.
-    path : path to store datas
-        DESCRIPTION.
+    path : str
+        path to store datas.
     xlimits : ndarray[n_var,2], if None then it takes fun.xlimits
         bounds limits of fun, optional
     reference : ndarray[ n_points, n_obj], optional
@@ -38,77 +60,97 @@ def write_increase_iter(fun,path,xlimits = None,reference = None, n_max=10, runs
         Non-default MOO parameters for the optimization. The default is {"pop_size" : 50}.
     verbose : Bool, optional
         If informations are given during the process. The default is True.
+    subcrits : list of str
+        Subcriterions for wb2S
+    transfos : list of function
+        Transformations for wb2S
     """
-    if xlimits is None :
+    if xlimits is None:
         xlimits = fun.xlimits
-    if reference is None and indic != "hv" :
+    if reference is None and indic != "hv":
         reference = fun.pareto()[1]
     if indic == "hv":
-        igd = get_performance_indicator(indic, ref_point = reference)
-    else :
+        igd = get_performance_indicator(indic, ref_point=reference)
+    else:
         igd = get_performance_indicator(indic, reference)
-    fichier = open(path,'wb')
+    if titles is None:
+        titles = criterions
+    fichier = open(path, "wb")
     mo = MOO(xlimits=xlimits)
     for clef, val in paraMOO.items():
         mo.options._dict[clef] = val
-    
-    def obj_profile(criterion='PI',n=n_max,seed = 3):
+
+    def obj_profile(
+        criterion="PI", n=n_max, seed=3, subcrit="EHVI", transfo=lambda l: sum(l)
+    ):
         """
         Intermediate function to run for a specific criterion 1 run
         of MOO, giving the resulting front at each iteration
         """
         fronts = []
+        times = []
         sampling = LHS(xlimits=xlimits, random_state=seed)
         xdoe = sampling(mo.options["n_start"])
         mo.options["criterion"] = criterion
         mo.options["random_state"] = seed
         mo.options["xdoe"] = xdoe
-        mo.options["n_iter"] =0
+        mo.options["n_iter"] = 0
+        mo.options["subcrit"] = subcrit
+        mo.options["transfo"] = transfo
         mo.optimize(fun)
         fronts.append(mo.result.F)
-        mo.options["n_iter"]= 1
-        for i in range(1,n):
-            mo.options["xdoe"]=xdoe #the last doe is used for the new iteration to add a point
-            mo.optimize(fun)
-            fronts.append( mo.result.F)
+        mo.options["n_iter"] = 1
+        for i in range(1, n):
+            stime = time.time()
+            mo.options[
+                "xdoe"
+            ] = xdoe  # the last doe is used for the new iteration to add a point
+            X, _ = mo.optimize(fun)
+            fronts.append(fun(X))
+            times.append(time.time() - stime)
             xdoe = mo.modeles[0].training_points[None][0][0]
-        dists = [igd.calc(fr) for fr in fronts]# - to have the growth as goal
-        if verbose :
-            print("xdoe next", xdoe[-1])
-            #print("distances",dists)
-        return dists, fronts
-    
-    dico_res = {crit:{} for crit in criterions}
-    #plots_moy = []
-    t_start = time.time()
-    for crit in criterions:
+        dists = [igd.calc(fr) for fr in fronts]  # - to have the growth as goal
+
+        if verbose:
+            print("xdoe", xdoe)
+            # print("distances",dists)
+        return dists, fronts, times
+
+    dico_res = {crit: {} for crit in titles}
+    # plots_moy = []
+    for i, crit in enumerate(criterions):
         fronts_pareto = []
         distances = []
-        if verbose :
-            print("criterion ", crit)
-        for graine in range(start_seed, start_seed+runs):
-            if verbose :
+        temps = []
+        if verbose:
+            print("criterion ", titles[i])
+        for graine in range(start_seed, start_seed + runs):
+            if verbose:
                 print("seed", graine)
-            di , fr = obj_profile(crit,n=n_max, seed = graine)
+            di, fr, tmps = obj_profile(
+                crit, n=n_max, seed=graine, subcrit=subcrits[i], transfo=transfos[i]
+            )
             fronts_pareto.append(fr)
             distances.append(di)
-        t_moy = (time.time() - t_start)/runs
-        if verbose :
-            print("average time", crit,":", t_moy)
-        t_start = time.time()
-        dico_res[crit] = {"time" : t_moy, "fronts" : fronts_pareto.copy(), "dists" : distances.copy()}
-    pickle.dump(dico_res,fichier)
+            temps.append(tmps)
+        dico_res[titles[i]] = {
+            "time": temps.copy(),
+            "fronts": fronts_pareto.copy(),
+            "dists": distances.copy(),
+        }
+    pickle.dump(dico_res, fichier)
     fichier.close()
 
-def write_results(fun, path, runs = 1, paraMOO = {}):
+
+def write_results(fun, path, runs=1, paraMOO={}):
     """
-    Run runs times the optimizer on fun using the paraMOO parameters. 
+    Run runs times the optimizer on fun using the paraMOO parameters.
     The results of each run are stored in path using the pickle module.
     To get the datas for postprocessing, use read_results(path).
 
     Parameters
     ----------
-    fun : function 
+    fun : function
         black box function to optimize : ndarray[ne,nx] -> ndarray[ne,ny]
     path : string
         Absolute path to store the datas.
@@ -117,20 +159,21 @@ def write_results(fun, path, runs = 1, paraMOO = {}):
     paraMOO : dictionnary, optional
         parameters for MOO solver. The default is {}.
     """
-    fichier = open(path,'wb')
+    fichier = open(path, "wb")
     mo = MOO()
     for clef, val in paraMOO.items():
         mo.options._dict[clef] = val
-    pickle.dump(mo.options._dict,fichier)
+    pickle.dump(mo.options._dict, fichier)
     dico_res = {}
     for i in range(runs):
-        titre = "run"+str(i)
-        dico_res[titre]={}
+        titre = "run" + str(i)
+        dico_res[titre] = {}
         mo.optimize(fun)
-        dico_res[titre]["F"]=mo.result.F
-        dico_res[titre]["X"]=mo.result.X
-    pickle.dump(dico_res,fichier)
+        dico_res[titre]["F"] = mo.result.F
+        dico_res[titre]["X"] = mo.result.X
+    pickle.dump(dico_res, fichier)
     fichier.close()
+
 
 def read_results(path):
     """
@@ -149,11 +192,12 @@ def read_results(path):
         contains the datas relatives to the runs. For instance,
         results["run0"]["F"] contains the pareto front of the first run.
     """
-    fichier = open(path,'rb')
+    fichier = open(path, "rb")
     param = pickle.load(fichier)
     results = pickle.load(fichier)
     fichier.close()
     return param, results
+
 
 def pymoo2fun(pb):
     """
@@ -170,11 +214,14 @@ def pymoo2fun(pb):
         Callable function, equivalent to the one of the problem : ndarray[ne,nx] -> ndarray[ne,ny].
 
     """
+
     def f_equiv(x):
         output = {}
-        pb._evaluate(x,output)
+        pb._evaluate(x, output)
         return output["F"]
+
     return f_equiv
+
 
 def pymoo2constr(pb):
     """
@@ -193,9 +240,11 @@ def pymoo2constr(pb):
     """
     list_con = []
     for i in range(pb.n_constr):
-        def g_equiv(x,i=i):
+
+        def g_equiv(x, i=i):
             output = {}
-            pb._evaluate(x,output)
-            return output["G"][:,i]
+            pb._evaluate(x, output)
+            return output["G"][:, i]
+
         list_con.append(g_equiv)
     return list_con
