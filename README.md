@@ -1,24 +1,34 @@
-# Multi-objective-Bayesian-Optimization
-Internship Robin Grapin
+[![Tests](https://github.com/OneraHub/smoot/workflows/Tests/badge.svg)](https://github.com/OneraHub/smoot/actions?query=workflow%3ATests)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
-This Github is a copy of https://github.com/OneraHub/smoot that I encoded for my internship with Supaéro and the Onera.
-The package at this link can be installed thanks to the following command :
+# smoot
+
+## Installation
 <code>
   pip install smoot
 </code>
 
-In order to understand the functionning of the module, please look at the notebook, which is a tutorial.
-Necessary imports :
-<code>
-  pip install pymoo
-  pip install smt
-</code>
+Necessary packages : <code>pymoo</code>,<code>smt</code>
 
-Tutors for this work :
- - Jospeh Morlier (ISAE-Supaéro)
- - Nathalie Bartoli (ONERA)
- - Youssef Diouane (ISAE-Supaéro)
+## Description
 
-I want to thank them for the great help given for this project.
+This surrogate based multi-objective Bayesian optimizer has been created to see the performance of the WB2S criterion adapted to multi-objective problems.
+Given a black box function f : **x** -> **y** with **bolds** characters as vectors, <code>smoot</code> will give an accurate approximation of the optima with few calls of f.
 
-Contact me at robingrapin@orange.fr for questions and remarks.
+![modeli1](ressources/f1_avant.png)
+![modeli2](ressources/f2_avant.png)
+
+![activ](ressources/wb2s_vs_ehvi.png)
+
+![modeli12](ressources/f1_apres.png)
+![modeli22](ressources/f2_apres.png)
+
+### Utilisation
+
+Look at the Jupyter notebook in the *tutorial* folder.
+
+You will learn how to use implemented the functionnalities and options such as :
+ - The choice of the infill criterion
+ - The method to manage the constraints
+
+For additional questions, contact: robingrapin@orange.fr
